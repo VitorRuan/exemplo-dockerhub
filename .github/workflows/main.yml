@@ -19,7 +19,7 @@ jobs:
       - name: Configurar Node.js
         uses: actions/setup-node@v2
         with:
-          node-version: '14'
+          node-version: "14"
 
       - name: Instalar dependências
         run: npm install
@@ -48,21 +48,21 @@ jobs:
             LAST_TAG="v0.0.0"
           fi
           echo "Versão Atual: $LAST_TAG"
-          
+
           if [ "$LAST_TAG" = "v0.0.0" ]; then
             COMMITS=$(git log --pretty=format:"%s")
           else
             COMMITS=$(git log ${LAST_TAG}..HEAD --pretty=format:"%s")
           fi
-          
+
           echo "Commits desde a última tag:"
           echo "$COMMITS"
-          
+
           # Inicializando variáveis
           MAJOR=0
           MINOR=0
           PATCH=0
-          
+
           # Analisando mensagens de commit
           for COMMIT in "$COMMITS"; do
             if [[ "$COMMIT" == *"BREAKING CHANGE"* ]]; then
@@ -73,7 +73,7 @@ jobs:
               PATCH=1
             fi
           done
-          
+
           # Calculando a nova versão usando semver
           CURRENT_VERSION=${LAST_TAG#v}
           NEW_VERSION=$CURRENT_VERSION
@@ -84,14 +84,14 @@ jobs:
           elif [[ $PATCH -eq 1 ]]; then
             NEW_VERSION=$(semver -i patch $CURRENT_VERSION)
           fi
-          
+
           echo "Nova versão: $NEW_VERSION"
           echo "new_version=$NEW_VERSION" >> $GITHUB_ENV
 
       - name: Atualizar versão no package.json
         run: |
           npm version ${{ env.new_version }} --no-git-tag-version
-          
+
       - name: Commit e push
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
@@ -111,10 +111,10 @@ jobs:
 
       - name: Criar imagem docker
         run: |
-          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/fatec-dsm:${{ env.new_version }} .
-          docker tag ${{ secrets.DOCKERHUB_USERNAME }}/fatec-dsm:${{ env.new_version }} ${{ secrets.DOCKERHUB_USERNAME }}/fatec-dsm:latest
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/testedockerhub:${{ env.new_version }} .
+          docker tag ${{ secrets.DOCKERHUB_USERNAME }}/testedockerhub:${{ env.new_version }} ${{ secrets.DOCKERHUB_USERNAME }}/testedockerhub:latest
 
       - name: Efetuar push da imagem
         run: |
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/fatec-dsm:${{ env.new_version }}
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/fatec-dsm:latest
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/testedockerhub:${{ env.new_version }}
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/testedockerhub:latest

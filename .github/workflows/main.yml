@@ -16,6 +16,10 @@ jobs:
           token: ${{ secrets.GH_TOKEN }}
           fetch-depth: 0
 
+      - name: Realizar git pull para garantir que o branch está atualizado
+        run: |
+          git pull origin master
+
       - name: Configurar Node.js
         uses: actions/setup-node@v2
         with:
@@ -100,10 +104,6 @@ jobs:
           # Se o npm não fez nenhuma alteração, então faça o git commit mesmo assim
           git add package.json
           git commit -m "chore(release): version ${{ env.new_version }}" || echo "Nenhuma alteração a ser comitada"
-
-      - name: Realizar git pull
-        run: |
-          git pull origin master
 
       - name: Commit e push
         env:

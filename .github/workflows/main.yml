@@ -82,19 +82,11 @@ jobs:
             NEW_VERSION=$(semver -i patch $CURRENT_VERSION)
           fi
 
-          # Verificar se a nova versão é igual à atual
-          if [ "$CURRENT_VERSION" = "$NEW_VERSION" ]; then
-            echo "Nenhuma mudança detectada. Versão permanece $CURRENT_VERSION."
-            echo "new_version=$CURRENT_VERSION" >> $GITHUB_ENV
-            exit 0  # Ignora o resto do workflow
-          fi
-
           echo "Nova versão: $NEW_VERSION"
           echo "new_version=$NEW_VERSION" >> $GITHUB_ENV
 
       - name: Garantir versão padrão
         run: |
-          # Caso a versão nova esteja vazia, usar uma versão padrão
           if [ -z "${{ env.new_version }}" ]; then
             echo "Nenhuma nova versão detectada. Usando v0.0.1 como padrão."
             echo "new_version=0.0.1" >> $GITHUB_ENV
@@ -102,7 +94,16 @@ jobs:
 
       - name: Atualizar versão no package.json
         run: |
+          # Forçar o comando npm version para registrar uma mudança
           npm version ${{ env.new_version }} --no-git-tag-version --allow-same-version
+
+          # Se o npm não fez nenhuma alteração, então faça o git commit mesmo assim
+          git add package.json
+          git commit -m "chore(release): version ${{ env.new_version }}" || echo "Nenhuma alteração a ser comitada"
+
+      - name: Realizar git pull
+        run: |
+          git pull origin master
 
       - name: Commit e push
         env:
@@ -110,13 +111,6 @@ jobs:
         run: |
           git config --global user.name 'github-actions'
           git config --global user.email 'github-actions@github.com'
-
-          # Forçar commit se não houver alterações no package.json
-          git add -A
-          git commit -m "chore(release): version ${{ env.new_version }}" || echo "Nenhuma alteração a ser comitada"
-
-          # Criar tag e empurrar alterações
-          git tag v${{ env.new_version }}
           git push origin master --tags
 
       - name: Efetuar login no docker hub

@@ -58,12 +58,10 @@ jobs:
           echo "Commits desde a última tag:"
           echo "$COMMITS"
 
-          # Inicializando variáveis
           MAJOR=0
           MINOR=0
           PATCH=0
 
-          # Analisando mensagens de commit
           for COMMIT in "$COMMITS"; do
             if [[ "$COMMIT" == *"BREAKING CHANGE"* ]]; then
               MAJOR=1
@@ -74,7 +72,6 @@ jobs:
             fi
           done
 
-          # Calculando a nova versão usando semver
           CURRENT_VERSION=${LAST_TAG#v}
           NEW_VERSION=$CURRENT_VERSION
           if [[ $MAJOR -eq 1 ]]; then
@@ -85,8 +82,23 @@ jobs:
             NEW_VERSION=$(semver -i patch $CURRENT_VERSION)
           fi
 
+          # Verificar se a nova versão é igual à atual
+          if [ "$CURRENT_VERSION" = "$NEW_VERSION" ]; then
+            echo "Nenhuma mudança detectada. Versão permanece $CURRENT_VERSION."
+            echo "new_version=$CURRENT_VERSION" >> $GITHUB_ENV
+            exit 0  # Ignora o resto do workflow
+          fi
+
           echo "Nova versão: $NEW_VERSION"
           echo "new_version=$NEW_VERSION" >> $GITHUB_ENV
+
+      - name: Garantir versão padrão
+        run: |
+          # Caso a versão nova esteja vazia, usar uma versão padrão
+          if [ -z "${{ env.new_version }}" ]; then
+            echo "Nenhuma nova versão detectada. Usando v0.0.1 como padrão."
+            echo "new_version=0.0.1" >> $GITHUB_ENV
+          fi
 
       - name: Atualizar versão no package.json
         run: |
@@ -98,8 +110,12 @@ jobs:
         run: |
           git config --global user.name 'github-actions'
           git config --global user.email 'github-actions@github.com'
-          git add package.json
-          git commit -m "chore(release): version ${{ env.new_version }}"
+
+          # Forçar commit se não houver alterações no package.json
+          git add -A
+          git commit -m "chore(release): version ${{ env.new_version }}" || echo "Nenhuma alteração a ser comitada"
+
+          # Criar tag e empurrar alterações
           git tag v${{ env.new_version }}
           git push origin master --tags
 
